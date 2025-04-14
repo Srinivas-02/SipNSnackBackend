@@ -3,17 +3,93 @@ from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
 from rest_framework.parsers import JSONParser, FormParser, MultiPartParser
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.permissions import AllowAny
 from pos.apps.locations.models import LocationModel as Location
 from pos.utils.logger import POSLogger
+from rest_framework.response import Response
+from rest_framework import status
+
 User = get_user_model()
 
+logger = POSLogger(__name__)
+
 class LoginView(APIView):
-    LOG = POSLogger()
+    permission_classes = [AllowAny]
     parser_classes = [JSONParser, FormParser, MultiPartParser]
     
+    def get_tokens_for_user(self, user):
+        """Generate JWT tokens for the user"""
+        refresh = RefreshToken.for_user(user)
+        return {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
+
+    def verify_location(self, location_name, location_password):
+        """Verify location credentials"""
+        # TODO: Implement location verification
+        logger.warning("Location login not implemented yet")
+        return JsonResponse(
+            {'error': 'Location login not implemented'},
+            status=status.HTTP_501_NOT_IMPLEMENTED
+        )
+
+    def authenticate_user(self, email, password):
+        """Authenticate user and return tokens"""
+        if not email or not password:
+            logger.error("Missing credentials in login request")
+            return Response(
+                {'error': 'Please provide both email and password'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Authenticate user
+        user = authenticate(username=email, password=password)
+        
+        if not user:
+            logger.warning(f"Failed login attempt for email: {email}")
+            return Response(
+                {'error': 'Invalid credentials'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        # Generate tokens
+        tokens = self.get_tokens_for_user(user)
+        
+        # Determine user role
+        user_role = 'user'
+        if user.is_super_admin:
+            user_role = 'super_admin'
+        elif user.is_franchise_admin:
+            user_role = 'admin'
+        elif user.is_staff_member:
+            user_role = 'staff'
+        
+        # Add user info to response
+        response_data = {
+            **tokens,
+            'user': {
+                'id': user.id,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'role': user_role,
+                'is_super_admin': user.is_super_admin,
+                'is_franchise_admin': user.is_franchise_admin,
+                'is_staff_member': user.is_staff_member,
+                'is_active': user.is_active
+            }
+        }
+        
+        logger.info(f"Successful login for user: {user.email}")
+        return Response(response_data, status=status.HTTP_200_OK)
+
     def post(self, request):
-        login_type = request.data.get('login_type')  
-        self.LOG.info(f"Login type received: {login_type}")  # Debug print for login type
+        """Handle login requests"""
+        login_type = request.data.get('login_type')
+        logger.debug(f"Login attempt with type: {login_type}")
+
         if login_type == 'location':
             return self.verify_location(
                 request.data.get('location_name'),
@@ -25,86 +101,8 @@ class LoginView(APIView):
                 request.data.get('password')
             )
         else:
-            return JsonResponse(
+            logger.error(f"Invalid login type: {login_type}")
+            return Response(
                 {'error': 'Invalid login_type. Must be "user" or "location"'},
-                status=400
+                status=status.HTTP_400_BAD_REQUEST
             )
-
-    def verify_location(self, location_name, location_password):
-        if not location_name or not location_password:
-            return JsonResponse(
-                {'error': 'Both location_name and location_password are required'},
-                status=400
-            )
-
-        try:
-            location = Location.objects.get(name=location_name, is_active=True)
-        except Location.DoesNotExist:
-            return JsonResponse(
-                {'error': 'Location not found'},
-                status=404
-            )
-
-        if location.password != location_password:
-            return JsonResponse(
-                {'error': 'Invalid location password'},
-                status=401
-            )
-
-        return JsonResponse(
-            {
-                'status': 'success',
-                'message': 'Location verified',
-                'location_id': location.id,
-                'location_name': location.name
-            },
-            status=200
-        )
-
-    def authenticate_user(self, email, password):
-        if not email or not password:
-            return JsonResponse(
-                {'error': 'Both email and password are required'},
-                status=400
-            )
-
-        user = authenticate(username=email, password=password)
-        
-        if not user:
-            return JsonResponse(
-                {'error': 'Invalid credentials'},
-                status=401
-            )
-
-        if user.is_super_admin:
-            role = 'super_admin'
-        elif user.is_franchise_admin:
-            role = 'franchise_admin'
-        elif user.is_staff_member:
-            role = 'staff'
-        else:
-            return JsonResponse(
-                {'error': 'User has no valid role'},
-                status=403
-            )
-
-        response_data = {
-            'message': 'Login successful',
-            'id': user.id,
-            'email': user.email,
-            'role': role,
-            'is_active': user.is_active
-        }
-
-        if role == 'super_admin':
-            response_data['permissions'] = ['*']
-        elif role == 'franchise_admin':
-            response_data['managed_locations'] = list(
-                user.locations.values('id', 'name', 'city')
-            )
-        elif role == 'staff':
-            response_data['allowed_locations'] = list(
-                user.locations.values('id', 'name')
-            )
-
-        return JsonResponse(response_data, status=200)
