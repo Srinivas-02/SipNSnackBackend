@@ -1,7 +1,6 @@
 # accounts/models.py
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
-from pos.apps.locations.models import LocationModel as Location
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -34,7 +33,7 @@ class User(AbstractBaseUser):
     is_franchise_admin = models.BooleanField('franchise admin status', default=False)
     is_staff_member = models.BooleanField('staff member status', default=False)
     
-    locations = models.ManyToManyField(Location, blank=True)
+    locations = models.ManyToManyField('locations.LocationModel', blank=True)
     
     is_active = models.BooleanField('active', default=True)
     
