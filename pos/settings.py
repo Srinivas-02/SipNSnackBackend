@@ -36,6 +36,13 @@ CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
+    'channels',
+    'pos.apps.accounts',
+    'pos.apps.locations',
+    'pos.apps.menu',
+    'pos.apps.orders',
+    'pos.apps.dashboard',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -45,11 +52,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'django_extensions',
     'corsheaders',
-    'pos.apps.accounts',
-    'pos.apps.locations',
-    'pos.apps.menu',
-    'pos.apps.orders',
-    'pos.apps.dashboard',
+    
     'rest_framework_simplejwt',
 ]
 
@@ -111,10 +114,18 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'pos.wsgi.application'
+ASGI_APPLICATION = 'pos.asgi.application'
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
 
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
+
 
 DATABASES = {
     'default': {
@@ -127,6 +138,7 @@ DATABASES = {
     }
 }
 
+print(f"DB Config in settings : {os.environ.get('DATABASE_NAME')}, {os.environ.get('DATABASE_USERNAME')}")
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
