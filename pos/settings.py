@@ -138,7 +138,6 @@ DATABASES = {
     }
 }
 
-print(f"DB Config in settings : {os.environ.get('DATABASE_NAME')}, {os.environ.get('DATABASE_USERNAME')}")
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators

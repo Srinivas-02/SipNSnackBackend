@@ -1,3 +1,3 @@
 from django.shortcuts import render
-
-# Create your views here.
+from ._views.MenuItems import MenuItemsView
+from ._views.CategoryView import CategoryView

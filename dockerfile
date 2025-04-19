@@ -20,6 +20,12 @@ COPY requirements.txt /app/
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# Copy the entire project (including server_entrypoint.sh)
+COPY . .
+
+# Make the script executable
+RUN chmod +x /app/server_entrypoint.sh
+
 # Copy project files
 COPY . /app/
 
