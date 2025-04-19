@@ -1,5 +1,7 @@
 # accounts/models.py
 from django.db import models
+from django.utils import timezone
+
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from pos.apps.locations.models import LocationModel as Location
 
@@ -36,7 +38,7 @@ class User(AbstractBaseUser):
     
     locations = models.ManyToManyField(Location, blank=True)
     
-    is_active = models.BooleanField('active', default=True)
+    is_logged_in = models.BooleanField(default=False)
     
     objects = UserManager()
     
@@ -58,3 +60,20 @@ class User(AbstractBaseUser):
             raise ValueError("User can only have one role at a time")
         
         super().save(*args, **kwargs)
+
+
+class BlacklistedToken(models.Model):
+    jti = models.CharField(max_length=255, unique=True)
+    token = models.TextField(null=True, blank=True)  # Optional: store token for debugging
+    blacklisted_on = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        verbose_name = "Blacklisted Token"
+        verbose_name_plural = "Blacklisted Tokens"
+        indexes = [
+            models.Index(fields=["jti"]),
+        ]
+    
+    def __str__(self):
+        return f"Blacklisted on {self.blacklisted_on.strftime('%Y-%m-%d %H:%M:%S')} | Token ID: {self.jti}"
