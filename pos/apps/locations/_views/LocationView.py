@@ -38,7 +38,6 @@ class LocationView(APIView):
                     'address': location.address,
                     'city': location.city,
                     'state': location.state,
-                    'password': location.password
                 })
             except ObjectDoesNotExist:
                 logger.warning(f"Attempt to access non-existent location {location_id}")
@@ -46,7 +45,7 @@ class LocationView(APIView):
         else:
             # All locations
             locations = list(LocationModel.objects.values(
-                'id', 'name', 'city', 'state','password',
+                'id', 'name', 'city', 'state','address',
             ))
             logger.info(f"All locations list accessed by {request.user.email}")
             return JsonResponse(locations, safe=False)
@@ -62,7 +61,8 @@ class LocationView(APIView):
                 address=data.get('address', ''),
                 city=data.get('city', ''),
                 state=data.get('state', ''),
-                password=data.get('password', '')
+                password=data.get('password', ''),
+                phone = data.get('phone', None)
             )
             logger.info(f"New location '{location.name}' created by {request.user.email}")
             return JsonResponse({'id': location.id, 'status': 'created'}, status=201)
