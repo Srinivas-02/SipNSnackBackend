@@ -1,6 +1,6 @@
 #!/bin/sh
 
-python manage.py makemigrations locations accounts menu
+python manage.py makemigrations locations accounts menu orders
 python manage.py migrate
 
 python manage.py runserver 0.0.0.0:8000

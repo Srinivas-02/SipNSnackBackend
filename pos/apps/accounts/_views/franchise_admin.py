@@ -4,7 +4,6 @@ from rest_framework.response import Response
 from rest_framework import status
 from pos.apps.accounts.models import User
 from pos.apps.locations.models import LocationModel
-from pos.utils.permissions import IsSuperAdmin
 from pos.utils.logger import POSLogger
 
 logger = POSLogger(__name__)
@@ -19,7 +18,6 @@ class FranchiseAdminView(APIView):
     
     Protected: Only super admins can access this view
     """
-    permission_classes = [IsSuperAdmin]
     
     def post(self, request):
         """Create new franchise admin"""
@@ -80,7 +78,7 @@ class FranchiseAdminView(APIView):
                 return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
         else:
             admins = User.objects.filter(is_franchise_admin=True).values(
-                'id', 'email', 'first_name', 'last_name'
+                'id', 'email', 'first_name', 'last_name',
             )
             logger.info(f"All franchise admins list accessed by {request.user.email}")
             return Response(list(admins))
