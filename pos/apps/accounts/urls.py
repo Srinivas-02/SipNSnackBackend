@@ -1,10 +1,11 @@
 # accounts/urls.py
 
 from django.urls import path
+
+from pos.apps.accounts._views.login import LocationLoginView, UserLoginView
 from .views import (
     ChangePasswordView,
     FranchiseAdminView,
-    LoginView,
     LogoutView,
 )
 from rest_framework_simplejwt.views import (
@@ -13,7 +14,8 @@ from rest_framework_simplejwt.views import (
 )
 
 urlpatterns = [
-    path('login/', LoginView.as_view(), name='login'),
+    path('login-location/', LocationLoginView.as_view(), name='login'),
+    path('login-user/', UserLoginView.as_view(), name='login'),
     path('change-password/', ChangePasswordView.as_view()),
     path('franchise-admin/', FranchiseAdminView.as_view()),
     path('logout/', LogoutView.as_view()),
