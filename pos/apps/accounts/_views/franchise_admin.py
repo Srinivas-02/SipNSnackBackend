@@ -21,45 +21,85 @@ class FranchiseAdminView(APIView):
     
     def post(self, request):
         """Create new franchise admin"""
-        required_fields = ['email', 'password', 'first_name', 'last_name']
+        required_fields = ['email', 'password', 'first_name', 'last_name', 'location_ids']
         if missing := [f for f in required_fields if f not in request.data]:
             logger.warning(f"Attempt to create franchise admin with missing fields: {missing}")
             return Response(
                 {'error': f'Missing fields: {", ".join(missing)}'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        if request.user.is_super_admin:
+            try:
+                franchise_admin = User.objects.create_user(
+                    email=request.data['email'],
+                    password=request.data['password'],
+                    first_name=request.data['first_name'],
+                    last_name=request.data['last_name'],
+                    is_franchise_admin=True
+                )
 
-        try:
-            franchise_admin = User.objects.create_user(
-                email=request.data['email'],
-                password=request.data['password'],
-                first_name=request.data['first_name'],
-                last_name=request.data['last_name'],
-                is_franchise_admin=True
-            )
+                if 'location_ids' in request.data:
+                    locations = LocationModel.objects.filter(id__in=request.data['location_ids'])
+                    franchise_admin.locations.set(locations)
 
-            if 'location_ids' in request.data:
-                locations = LocationModel.objects.filter(id__in=request.data['location_ids'])
+                logger.info(f"Franchise admin {franchise_admin.email} created by {request.user.email}")
+                return Response({
+                    'id': franchise_admin.id,
+                    'email': franchise_admin.email,
+                    'message': 'Franchise admin created successfully'
+                }, status=status.HTTP_201_CREATED)
+
+            except Exception as e:
+                logger.error(f"Error creating franchise admin: {str(e)}")
+                return Response(
+                    {'error': str(e)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        elif request.user.is_franchise_admin:
+            admin = get_object_or_404(User,id=request.user.id, is_franchise_admin = True)
+            locations = list(admin.locations.values('id'))
+            requested_locations = request.data['location_ids']
+            admin_locations = [loc['id'] for loc in locations]
+            # Check if all requested locations are in admin's accessible locations
+            if not all(loc_id in admin_locations for loc_id in requested_locations):
+                logger.warning(f"Franchise admin {request.user.email} attempted to create admin with unauthorized locations")
+                return Response(
+                    {'error': 'You do not have access to all requested locations'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            try:
+                franchise_admin = User.objects.create_user(
+                    email=request.data['email'],
+                    password=request.data['password'],
+                    first_name=request.data['first_name'],
+                    last_name=request.data['last_name'],
+                    is_franchise_admin=True
+                )
+
+                locations = LocationModel.objects.filter(id__in=requested_locations)
                 franchise_admin.locations.set(locations)
 
-            logger.info(f"Franchise admin {franchise_admin.email} created by {request.user.email}")
-            return Response({
-                'id': franchise_admin.id,
-                'email': franchise_admin.email,
-                'message': 'Franchise admin created successfully'
-            }, status=status.HTTP_201_CREATED)
+                logger.info(f"Franchise admin {franchise_admin.email} created by {request.user.email}")
+                return Response({
+                    'id': franchise_admin.id,
+                    'email': franchise_admin.email,
+                    'message': 'Franchise admin created successfully'
+                }, status=status.HTTP_201_CREATED)
 
-        except Exception as e:
-            logger.error(f"Error creating franchise admin: {str(e)}")
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            except Exception as e:
+                logger.error(f"Error creating franchise admin: {str(e)}")
+                return Response(
+                    {'error': str(e)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            return(Response({'error':'not allowed'}))
 
     def get(self, request):
         """Get all franchise admins or specific one"""
         admin_id = request.query_params.get('id')
-        
         if admin_id:
             try:
                 admin = get_object_or_404(User, id=admin_id, is_franchise_admin=True)
@@ -77,11 +117,27 @@ class FranchiseAdminView(APIView):
                 logger.warning(f"Error retrieving franchise admin {admin_id}: {str(e)}")
                 return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
         else:
-            admins = User.objects.filter(is_franchise_admin=True).values(
-                'id', 'email', 'first_name', 'last_name',
-            )
-            logger.info(f"All franchise admins list accessed by {request.user.email}")
-            return Response(list(admins))
+            if request.user.is_super_admin:
+                admins = User.objects.filter(is_franchise_admin=True).values(
+                    'id', 'email', 'first_name', 'last_name',
+                )
+                logger.info(f"All franchise admins list accessed by {request.user.email}")
+                return Response(list(admins))
+            elif request.user.is_franchise_admin:
+                admin = get_object_or_404(User, id=request.user.id, is_franchise_admin=True)
+                locations = list(admin.locations.values('id', 'name'))
+                # Get all franchise admins that have access to any of these locations
+                franchise_admins = User.objects.filter(
+                    is_franchise_admin=True,
+                    locations__in=admin.locations.all()
+                ).distinct().values(
+                    'id', 'email', 'first_name', 'last_name'
+                )
+                logger.info(f"Franchise admins list accessed by franchise admin {request.user.email}")
+                return Response(list(franchise_admins))
+            else: 
+                return Response({'error' : 'not allowed'})
+
 
     def patch(self, request):
         """Update franchise admin details"""
