@@ -21,10 +21,9 @@ class CategoryView(APIView):
                 'display_order': category.display_order
             } for category in categories]
             return Response({'categories': data})
-        elif request.user.is_franchise_admin:
-            admin = get_object_or_404(User, id = request.user.id, is_franchise_admin = True)
-            locations = list(admin.locations.values('id','name'))
-            categories = CategoryModel.objects.filter(location__in=admin.locations.all()).order_by('display_order')
+        elif request.user.is_franchise_admin or request.user.is_staff_member:
+            requester = get_object_or_404(User, id = request.user.id)
+            categories = CategoryModel.objects.filter(location__in=requester.locations.all()).order_by('display_order')
             data = [{
                 'id': category.id,
                 'name': category.name,

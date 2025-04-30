@@ -69,21 +69,24 @@ class UserLoginView(APIView):
                 {'error': 'Invalid credentials'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
-        
-        # For staff logins, verify location association
-        if location_id:
-            try:
-                location = Location.objects.get(id=location_id, is_active=True)
-                if not user.locations.filter(id=location.id).exists():
+        # Check if the user is a staff member
+        if getattr(user, 'is_staff_member', False):
+            # For staff logins, verify location association
+            if location_id:
+                try:
+                    location = Location.objects.get(id=location_id, is_active=True)
+                    if not user.locations.filter(id=location.id).exists():
+                        return Response(
+                            {'error': 'User not assigned to this location'},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+                except Location.DoesNotExist:
                     return Response(
-                        {'error': 'User not assigned to this location'},
-                        status=status.HTTP_403_FORBIDDEN
+                        {'error': 'Invalid location'},
+                        status=status.HTTP_400_BAD_REQUEST
                     )
-            except Location.DoesNotExist:
-                return Response(
-                    {'error': 'Invalid location'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            else:
+                return Response({'error':'Location id is required for staff login.'})
         
         tokens = self.get_tokens_for_user(user)
         

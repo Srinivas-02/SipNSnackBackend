@@ -49,11 +49,11 @@ class MenuItemsView(APIView):
         
         if request.user.is_super_admin:
             items = MenuItemModel.objects.filter(is_available=True)
-        elif request.user.is_franchise_admin:
-            admin = get_object_or_404(User, id=request.user.id, is_franchise_admin=True)
+        elif request.user.is_franchise_admin or request.user.is_staff_member:
+            requester = get_object_or_404(User, id=request.user.id)
             items = MenuItemModel.objects.filter(
                 is_available=True,
-                location__in=admin.locations.all()
+                location__in=requester.locations.all()
             )
         else:
             return Response({'error': 'not allowed'})
@@ -71,44 +71,38 @@ class MenuItemsView(APIView):
     def post(self, request):
         """Create new menu item"""
         try:
+            if not (request.user.is_super_admin or request.user.is_franchise_admin):
+                return Response({'error': 'not allowed'})
+
             requested_loc = request.data.get('location_id')
             category = CategoryModel.objects.get(id=request.data.get('category_id'))
-            if category.location.id != requested_loc :
+            
+            if category.location.id != requested_loc:
                 return Response({'error': 'category does not belong this location'})
+                
             location = LocationModel.objects.get(id=requested_loc)
-            if request.user.is_super_admin:
-                new_item = MenuItemModel.objects.create(
-                    name=request.data.get('name'),
-                    price=request.data.get('price'),
-                    category=category,
-                    location=location,
-                    is_available=True
-                )
-                return Response({
-                    'status': 'success',
-                    'id': new_item.id,
-                    'name': new_item.name
-                }, status=status.HTTP_201_CREATED)
-            elif request.user.is_franchise_admin:
-                admin = get_object_or_404(User, id = request.user.id, is_franchise_admin = True )
-                locations = list(admin.locations.values('id','name'))
-                if requested_loc not in [loc['id'] for loc in locations]:
-                    return Response({'error':'does not have access to this location'})
-                new_item = MenuItemModel.objects.create(
-                    name = request.data.get('name'),
-                    price= request.data.get('price'),
-                    category = category,
-                    location = location,
-                    is_available = True
-                )
-                return Response({
-                    'status': 'success',
-                    'id': new_item.id,
-                    'name': new_item.name
-                }, status=status.HTTP_201_CREATED)
-            else:
-                return Response({'error':'not allowed'})
-        
+            
+            # Check location access for franchise admin
+            if request.user.is_franchise_admin:
+                admin = get_object_or_404(User, id=request.user.id, is_franchise_admin=True)
+                if requested_loc not in [loc['id'] for loc in list(admin.locations.values('id', 'name'))]:
+                    return Response({'error': 'does not have access to this location'})
+
+            # Create menu item
+            new_item = MenuItemModel.objects.create(
+                name=request.data.get('name'),
+                price=request.data.get('price'),
+                category=category,
+                location=location,
+                is_available=True
+            )
+            
+            return Response({
+                'status': 'success',
+                'id': new_item.id,
+                'name': new_item.name
+            }, status=status.HTTP_201_CREATED)
+
         except Exception as e:
             return Response(
                 {'status': 'error', 'message': str(e)},

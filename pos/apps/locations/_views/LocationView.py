@@ -42,16 +42,9 @@ class LocationView(APIView):
                 logger.warning(f"Attempt to access non-existent location {location_id}")
                 return JsonResponse({'error': 'Location not found'}, status=404)
         else:
-            if request.user.is_super_admin:
-                # All locations if super user
-                locations = list(LocationModel.objects.values(
-                    'id', 'name', 'city', 'state','password',
-                ))
-            else:
-                locations = list(request.user.locations.values(
-                    'id', 'name', 'city', 'state','password',
-                ))
-            logger.info(f"All locations list accessed by {request.user.email}")
+            locations = list(LocationModel.objects.values(
+                'id', 'name', 'city', 'state',
+            ))
             return JsonResponse(locations, safe=False)
 
     def post(self, request):
