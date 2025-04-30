@@ -63,7 +63,7 @@ class MenuItemsView(APIView):
             'name': item.name,
             'price': float(item.price),
             'category': item.category.name,
-            'location': item.location.id,
+            'location_id': item.location.id,
             'image': item.image.url if item.image else None
         } for item in items]
         return Response({'menu_items': data})

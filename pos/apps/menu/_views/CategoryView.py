@@ -27,7 +27,7 @@ class CategoryView(APIView):
             data = [{
                 'id': category.id,
                 'name': category.name,
-                'location': category.location.id,
+                'location_id': category.location.id,
                 'display_order': category.display_order
             } for category in categories]
             return Response({'categories': data})

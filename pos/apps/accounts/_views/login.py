@@ -99,14 +99,7 @@ class UserLoginView(APIView):
                 'last_name': user.last_name,
                 'is_super_admin': user.is_super_admin,
                 'is_franchise_admin': user.is_franchise_admin,
-                'is_staff': user.is_staff_member,
+                'is_staff_member': user.is_staff_member,
             }
         }
-        
-        if location_id:
-            response_data['location'] = {
-                'id': location.id,
-                'name': location.name
-            }
-        
         return Response(response_data)
