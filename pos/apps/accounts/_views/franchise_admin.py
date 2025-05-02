@@ -118,23 +118,46 @@ class FranchiseAdminView(APIView):
                 return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
         else:
             if request.user.is_super_admin:
-                admins = User.objects.filter(is_franchise_admin=True).values(
-                    'id', 'email', 'first_name', 'last_name',
-                )
+                # Get all franchise admins
+                franchise_admins = User.objects.filter(is_franchise_admin=True)
+                
+                # Prepare response with locations as arrays
+                admins_data = []
+                for admin in franchise_admins:
+                    admin_locations = list(admin.locations.values('id', 'name'))
+                    admins_data.append({
+                        'id': admin.id,
+                        'email': admin.email,
+                        'first_name': admin.first_name,
+                        'last_name': admin.last_name,
+                        'locations': admin_locations
+                    })
+                
                 logger.info(f"All franchise admins list accessed by {request.user.email}")
-                return Response(list(admins))
+                return Response(admins_data)
             elif request.user.is_franchise_admin:
                 admin = get_object_or_404(User, id=request.user.id, is_franchise_admin=True)
-                locations = list(admin.locations.values('id', 'name'))
+                
                 # Get all franchise admins that have access to any of these locations
                 franchise_admins = User.objects.filter(
                     is_franchise_admin=True,
                     locations__in=admin.locations.all()
-                ).distinct().values(
-                    'id', 'email', 'first_name', 'last_name'
-                )
+                ).distinct()
+                
+                # Prepare response with locations as arrays
+                admins_data = []
+                for admin in franchise_admins:
+                    admin_locations = list(admin.locations.values('id', 'name'))
+                    admins_data.append({
+                        'id': admin.id,
+                        'email': admin.email,
+                        'first_name': admin.first_name,
+                        'last_name': admin.last_name,
+                        'locations': admin_locations
+                    })
+                
                 logger.info(f"Franchise admins list accessed by franchise admin {request.user.email}")
-                return Response(list(franchise_admins))
+                return Response(admins_data)
             else: 
                 return Response({'error' : 'not allowed'})
 

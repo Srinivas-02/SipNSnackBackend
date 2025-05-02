@@ -6,10 +6,26 @@ from pos.utils.permissions import IsSuperAdmin
 from pos.utils.logger import POSLogger
 from rest_framework.response import Response
 from rest_framework import status
+from django.views.decorators.http import require_GET
+from pos.apps.accounts.models import User
+
 
 from pos.apps.locations.models import LocationModel
 
 logger = POSLogger(__name__)
+
+@require_GET
+def get_location_names(request):
+    try:
+        locations = LocationModel.objects.values('name')
+        logger.info("All location names accessed")
+        return JsonResponse(list(locations), safe=False)
+    except Exception as e:
+        logger.error(f"Error retrieving location names: {str(e)}")
+        return JsonResponse({'error': 'Error retrieving locations'}, status=500)
+
+
+
 
 class LocationView(APIView):
     """
@@ -25,30 +41,52 @@ class LocationView(APIView):
     def get(self, request):
         """Get all locations or specific one if ID provided"""
         location_id = request.GET.get('id')
-        
+
+        user = request.user
+        if not (request.user.is_super_admin or request.user.is_franchise_admin):
+            return Response({'error': 'not authorized'})
         if location_id:
-            # Single location
-            try:
-                location = LocationModel.objects.get(id=location_id)
-                logger.info(f"Location {location.id} details accessed by {request.user.email}")
-                return JsonResponse({
-                    'id': location.id,
-                    'name': location.name,
-                    'address': location.address,
-                    'city': location.city,
-                    'state': location.state,
-                })
-            except ObjectDoesNotExist:
-                logger.warning(f"Attempt to access non-existent location {location_id}")
-                return JsonResponse({'error': 'Location not found'}, status=404)
+                if request.user.is_franchise_admin:
+                    if not request.user.has_location_access(location_id):
+                        logger.warning(f"Franchise admin {request.user.email} attempted to access unauthorized location {location_id}")
+                        return JsonResponse({'error': 'You do not have access to this location'}, status=403)
+                try:
+                    location = LocationModel.objects.get(id=location_id)
+                    logger.info(f"Location {location.id} details accessed by {user.email}")
+                    return JsonResponse({
+                        'id': location.id,
+                        'name': location.name,
+                        'address': location.address,
+                        'city': location.city,
+                        'state': location.state,
+                    })
+                except ObjectDoesNotExist:
+                    logger.warning(f"Attempt to access non-existent location {location_id}")
+                    return JsonResponse({'error': 'Location not found'}, status=404)
+        # Super Admin: all locations
+        if user.is_super_admin:
+            
+                locations = list(LocationModel.objects.values(
+                    'id', 'name', 'city', 'state', 'address', 'phone',
+                ))
+                return JsonResponse(locations, safe=False)
+        # Franchise Admin: only their locations
+        elif user.is_franchise_admin:
+                locations = list(user.locations.values(
+                    'id', 'name', 'city', 'state', 'address', 'phone',
+                ))
+                return JsonResponse(locations, safe=False)
+        # Staff: deny access
+        elif user.is_staff_member:
+            return JsonResponse({'error': 'fuck off'}, status=403)
+        # Default: deny access
         else:
-            locations = list(LocationModel.objects.values(
-                'id', 'name', 'city', 'state','address', 'phone',
-            ))
-            return JsonResponse(locations, safe=False)
+            return JsonResponse({'error': 'Not authorized'}, status=403)
 
     def post(self, request):
         """Create new location with optional fields"""
+        if not request.user.is_super_admin:
+            return Response({"error":"not allowed"})
         try:
             data = json.loads(request.body)
             
