@@ -43,7 +43,7 @@ class LocationView(APIView):
                 return JsonResponse({'error': 'Location not found'}, status=404)
         else:
             locations = list(LocationModel.objects.values(
-                'id', 'name', 'city', 'state',
+                'id', 'name', 'city', 'state','address', 'phone',
             ))
             return JsonResponse(locations, safe=False)
 
