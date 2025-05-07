@@ -17,8 +17,6 @@ class OrderView(APIView):
         # Extract basic order data
         data = request.data
         location_id = data.get('location_id')
-        table_number = data.get('table_number', '')
-        customer_name = data.get('customer_name', '')
         items = data.get('items', [])
 
         # Validate location
@@ -44,7 +42,6 @@ class OrderView(APIView):
         for item in items:
             menu_item_id = item.get('menu_item_id')
             quantity = item.get('quantity', 1)
-            notes = item.get('notes', '')
 
             try:
                 menu_item = MenuItemModel.objects.get(id=menu_item_id)
@@ -62,8 +59,7 @@ class OrderView(APIView):
             order_items.append({
                 'menu_item': menu_item,
                 'quantity': quantity,
-                'price': item_price,
-                'notes': notes
+                'price': item_price
             })
 
         # Create order
@@ -72,8 +68,7 @@ class OrderView(APIView):
                 location=location,
                 order_number=generate_order_number(location),
                 total_amount=total_amount,
-                table_number=table_number,
-                customer_name=customer_name
+                processed_by=request.user if request.user.is_authenticated else None
             )
             
             # Create order items
@@ -82,8 +77,7 @@ class OrderView(APIView):
                     order=order,
                     menu_item=item['menu_item'],
                     quantity=item['quantity'],
-                    price=item['price'],
-                    notes=item['notes']
+                    price=item['price']
                 )
         except Exception as e:
             return Response(

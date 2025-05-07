@@ -26,6 +26,19 @@ class UserManager(BaseUserManager):
         
         return self.create_user(email, password, **extra_fields)
 
+    def create_staff_user(self, email, password, locations=None, **extra_fields):
+        """Creates and saves a staff member with the given email, password and locations"""
+        extra_fields.setdefault('is_staff_member', True)
+        
+        if extra_fields.get('is_staff_member') is not True:
+            raise ValueError('Staff user must have is_staff_member=True')
+        
+        user = self.create_user(email, password, **extra_fields)
+        
+        if locations:
+            user.locations.set(locations)
+            
+        return user
  
 class User(AbstractBaseUser):
     email = models.EmailField('email address', unique=True)

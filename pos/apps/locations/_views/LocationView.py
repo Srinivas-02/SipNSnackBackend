@@ -17,7 +17,7 @@ logger = POSLogger(__name__)
 @require_GET
 def get_location_names(request):
     try:
-        locations = LocationModel.objects.values('name')
+        locations = LocationModel.objects.values('name','id')
         logger.info("All location names accessed")
         return JsonResponse(list(locations), safe=False)
     except Exception as e:
