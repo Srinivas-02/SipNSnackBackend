@@ -7,11 +7,6 @@ from pos.apps.menu.models import MenuItemModel
 from pos.apps.locations.models import LocationModel
 import random
 
-def generate_order_number(location):
-    """Generate unique order number with location ID and timestamp"""
-    timestamp = timezone.now().strftime("%Y%m%d%H%M%S%f")
-    return f"ORD-{location.id}-{timestamp}-{random.randint(1000,9999)}"
-
 class OrderView(APIView):
     def post(self, request):
         # Extract basic order data
@@ -66,7 +61,6 @@ class OrderView(APIView):
         try:
             order = Order.objects.create(
                 location=location,
-                order_number=generate_order_number(location),
                 total_amount=total_amount,
                 processed_by=request.user if request.user.is_authenticated else None
             )
@@ -87,8 +81,8 @@ class OrderView(APIView):
 
         return Response({
             'order_id': order.id,
-            'order_number': order.order_number,
             'total_amount': str(order.total_amount),
             'order_items': order.items.values(),
-            'message': 'Order created successfully'
+            'order_date': order.order_date,
+            'message': 'Order created successfully',
         }, status=status.HTTP_201_CREATED)

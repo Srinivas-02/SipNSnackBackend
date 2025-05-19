@@ -54,7 +54,6 @@ class UserLoginView(APIView):
     def post(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
-        location_id = request.data.get('location_id')  # Only required for staff
         
         if not email or not password:
             return Response(
@@ -69,27 +68,9 @@ class UserLoginView(APIView):
                 {'error': 'Invalid credentials'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
-        # Check if the user is a staff member
-        if getattr(user, 'is_staff_member', False):
-            # For staff logins, verify location association
-            if location_id:
-                try:
-                    location = Location.objects.get(id=location_id, is_active=True)
-                    if not user.locations.filter(id=location.id).exists():
-                        return Response(
-                            {'error': 'User not assigned to this location'},
-                            status=status.HTTP_403_FORBIDDEN
-                        )
-                except Location.DoesNotExist:
-                    return Response(
-                        {'error': 'Invalid location'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-            else:
-                return Response({'error':'Location id is required for staff login.'})
         
         tokens = self.get_tokens_for_user(user)
-        
+        user_locations = user.locations.filter(is_active=True)
         response_data = {
             **tokens,
             'user': {
@@ -100,6 +81,15 @@ class UserLoginView(APIView):
                 'is_super_admin': user.is_super_admin,
                 'is_franchise_admin': user.is_franchise_admin,
                 'is_staff_member': user.is_staff_member,
-            }
+            },
+            'locations' : [
+                {
+                    'id': location.id,
+                    'name': location.name
+                } for location in user_locations
+            ]
         }
+        
+        
+            
         return Response(response_data)
