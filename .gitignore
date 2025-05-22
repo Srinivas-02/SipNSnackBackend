@@ -7,6 +7,7 @@ __pycache__/
 *$py.class
 
 
+.env
 
 # Distribution / packaging
 .Python
