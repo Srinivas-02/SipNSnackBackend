@@ -11,6 +11,7 @@ logger = POSLogger()
 class MenuItemsView(APIView):
     def get(self, request):
         """Get all menu items or specific item if ID provided"""
+        logger.info(f"i got called bow bow bow")
         item_id = request.data.get('id')
         
         if item_id:
