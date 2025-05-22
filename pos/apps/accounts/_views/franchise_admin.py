@@ -21,6 +21,7 @@ class FranchiseAdminView(APIView):
     
     def post(self, request):
         """Create new franchise admin"""
+        logger.info(f"hello mawa from the postmethod \n\n\n\n\n\n\n")
         required_fields = ['email', 'password', 'first_name', 'last_name', 'location_ids']
         if missing := [f for f in required_fields if f not in request.data]:
             logger.warning(f"Attempt to create franchise admin with missing fields: {missing}")
@@ -99,6 +100,8 @@ class FranchiseAdminView(APIView):
 
     def get(self, request):
         """Get all franchise admins or specific one"""
+        logger.info(f"[FranchiseAdminView] GET request received by meeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
+        
         admin_id = request.query_params.get('id')
         if admin_id:
             try:
@@ -164,49 +167,80 @@ class FranchiseAdminView(APIView):
 
     def patch(self, request):
         """Update franchise admin details"""
+        logger.info("Franchise admin update request received")
+
         if 'id' not in request.data:
             logger.warning("Attempt to update franchise admin without providing ID")
-            return Response(
-                {'error': 'Franchise admin ID required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({'error': 'Franchise admin ID required'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             admin = get_object_or_404(User, id=request.data['id'], is_franchise_admin=True)
-            
+
+            if request.user.is_super_admin:
+                # Super admin can update freely
+                pass
+            elif request.user.is_franchise_admin:
+                # Franchise admin can only update if target admin is within their locations
+                requestor_locations = set(request.user.locations.values_list('id', flat=True))
+                target_locations = set(admin.locations.values_list('id', flat=True))
+                if not target_locations.issubset(requestor_locations):
+                    logger.warning(f"{request.user.email} unauthorized to update this admin")
+                    return Response({'error': 'Unauthorized to update this franchise admin'}, status=status.HTTP_403_FORBIDDEN)
+            else:
+                return Response({'error': 'Not allowed'}, status=status.HTTP_403_FORBIDDEN)
+
+            # Perform updates
             for field in ['first_name', 'last_name', 'email']:
                 if field in request.data:
                     setattr(admin, field, request.data[field])
-            
+
             if 'location_ids' in request.data:
-                locations = LocationModel.objects.filter(id__in=request.data['location_ids'])
-                admin.locations.set(locations)
-            
+                location_ids = request.data['location_ids']
+                new_locations = LocationModel.objects.filter(id__in=location_ids)
+
+                if request.user.is_franchise_admin:
+                    if not set(location_ids).issubset(request.user.locations.values_list('id', flat=True)):
+                        return Response({'error': 'Cannot assign unauthorized locations'}, status=status.HTTP_403_FORBIDDEN)
+
+                admin.locations.set(new_locations)
+
             admin.save()
             logger.info(f"Franchise admin {admin.email} updated by {request.user.email}")
             return Response({'message': 'Franchise admin updated'})
+
         except Exception as e:
             logger.error(f"Error updating franchise admin: {str(e)}")
             return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
 
+
     def delete(self, request):
         """Permanently delete franchise admin from database"""
+        logger.info("Franchise admin delete request received")
+
         if 'id' not in request.query_params:
             logger.warning("Attempt to delete franchise admin without providing ID")
-            return Response(
-                {'error': 'Specify ?id=<franchise_admin_id>'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({'error': 'Specify ?id=<franchise_admin_id>'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             admin = get_object_or_404(User, id=request.query_params['id'], is_franchise_admin=True)
+
+            if request.user.is_super_admin:
+                pass  # Full access
+            elif request.user.is_franchise_admin:
+                requestor_locations = set(request.user.locations.values_list('id', flat=True))
+                target_locations = set(admin.locations.values_list('id', flat=True))
+                if not target_locations.issubset(requestor_locations):
+                    logger.warning(f"{request.user.email} unauthorized to delete this admin")
+                    return Response({'error': 'Unauthorized to delete this franchise admin'}, status=status.HTTP_403_FORBIDDEN)
+            else:
+                return Response({'error': 'Not allowed'}, status=status.HTTP_403_FORBIDDEN)
+
             admin_email = admin.email
             admin.delete()
             logger.warning(f"Franchise admin {admin_email} deleted by {request.user.email}")
-            return Response(
-                {'message': 'Franchise admin permanently deleted'},
-                status=status.HTTP_204_NO_CONTENT
-            )
+            return Response({'message': 'Franchise admin permanently deleted'}, status=status.HTTP_204_NO_CONTENT)
+
         except Exception as e:
             logger.error(f"Error deleting franchise admin: {str(e)}")
             return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
+
