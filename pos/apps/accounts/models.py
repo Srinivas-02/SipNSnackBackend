@@ -1,5 +1,7 @@
 # accounts/models.py
 from django.db import models
+from django.utils import timezone
+
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 
 class UserManager(BaseUserManager):
@@ -23,7 +25,20 @@ class UserManager(BaseUserManager):
         
         return self.create_user(email, password, **extra_fields)
 
-
+    def create_staff_user(self, email, password, locations=None, **extra_fields):
+        """Creates and saves a staff member with the given email, password and locations"""
+        extra_fields.setdefault('is_staff_member', True)
+        
+        if extra_fields.get('is_staff_member') is not True:
+            raise ValueError('Staff user must have is_staff_member=True')
+        
+        user = self.create_user(email, password, **extra_fields)
+        
+        if locations:
+            user.locations.set(locations)
+            
+        return user
+ 
 class User(AbstractBaseUser):
     email = models.EmailField('email address', unique=True)
     first_name = models.CharField('first name', max_length=100)
@@ -35,7 +50,7 @@ class User(AbstractBaseUser):
     
     locations = models.ManyToManyField('locations.LocationModel', blank=True)
     
-    is_active = models.BooleanField('active', default=True)
+    is_logged_in = models.BooleanField(default=False)
     
     objects = UserManager()
     
@@ -57,3 +72,20 @@ class User(AbstractBaseUser):
             raise ValueError("User can only have one role at a time")
         
         super().save(*args, **kwargs)
+
+
+class BlacklistedToken(models.Model):
+    jti = models.CharField(max_length=255, unique=True)
+    token = models.TextField(null=True, blank=True)  # Optional: store token for debugging
+    blacklisted_on = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        verbose_name = "Blacklisted Token"
+        verbose_name_plural = "Blacklisted Tokens"
+        indexes = [
+            models.Index(fields=["jti"]),
+        ]
+    
+    def __str__(self):
+        return f"Blacklisted on {self.blacklisted_on.strftime('%Y-%m-%d %H:%M:%S')} | Token ID: {self.jti}"
