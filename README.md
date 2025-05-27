@@ -68,3 +68,57 @@ If you encounter any migration issues:
    docker-compose build
    docker-compose up
    ```
+   cd point_of_sale_project
+   ```
+
+2. Build and run with Docker Compose:
+   ```bash
+   docker-compose build
+   docker-compose up
+   ```
+
+That's it! The application will:
+- Set up all required directories
+- Run migrations in the correct order
+- Start the development server
+
+The API will be available at http://localhost:8000/
+
+## Manual Setup (if needed)
+
+If you encounter any issues during the automatic setup:
+
+### For Linux/macOS:
+```bash
+chmod +x setup.sh
+./setup.sh
+docker-compose build
+docker-compose up
+```
+
+### For Windows:
+```cmd
+setup.bat
+docker-compose build
+docker-compose up
+```
+
+## Troubleshooting
+
+If you encounter any migration issues:
+
+1. Stop all containers:
+   ```bash
+   docker-compose down
+   ```
+
+2. Remove the volume:
+   ```bash
+   docker volume rm point_of_sale_project_postgres_data
+   ```
+
+3. Rebuild and restart:
+   ```bash
+   docker-compose build
+   docker-compose up
+   ```

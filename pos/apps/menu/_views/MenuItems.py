@@ -131,6 +131,76 @@ class MenuItemsView(APIView):
                 {'status': 'error', 'message': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+    def patch(self, request, item_id=None):
+        """Partially update menu item"""
+        try:
+            # Get item_id from URL or request data
+            item_id = item_id or request.data.get('id')
+            if not item_id:
+                return Response(
+                    {'status': 'error', 'message': 'ID is required for update'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            item = MenuItemModel.objects.get(pk=item_id)
+            
+            # Check permissions
+            if request.user.is_franchise_admin:
+                admin = get_object_or_404(User, id=request.user.id, is_franchise_admin=True)
+                if item.location.id not in [loc['id'] for loc in list(admin.locations.values('id', 'name'))]:
+                    return Response({'error': 'not allowed'}, status=status.HTTP_403_FORBIDDEN)
+            elif not request.user.is_super_admin:
+                return Response({'error': 'not allowed'}, status=status.HTTP_403_FORBIDDEN)
+
+            # Update fields if they exist in request data
+            if 'name' in request.data:
+                item.name = request.data.get('name')
+            if 'price' in request.data:
+                item.price = request.data.get('price')
+            if 'is_available' in request.data:
+                item.is_available = request.data.get('is_available')
+            if 'category_id' in request.data:
+                category = CategoryModel.objects.get(id=request.data.get('category_id'))
+                # Verify category belongs to item's location
+                if category.location.id != item.location.id:
+                    return Response(
+                        {'error': 'category does not belong to this location'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                item.category = category
+            
+            item.save()
+            
+            # Format response to match GET response structure
+            data = {
+                "menu_items": [{
+                    'id': item.id,
+                    'name': item.name,
+                    'price': float(item.price),
+                    'category': item.category.name,
+                    'location_id': item.location.id,
+                    'image': item.image.url if item.image else None
+                }]
+            }
+            
+            return Response(data)
+        
+        except MenuItemModel.DoesNotExist:
+            return Response(
+                {'status': 'error', 'message': 'Menu item not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except CategoryModel.DoesNotExist:
+            return Response(
+                {'status': 'error', 'message': 'Category not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'status': 'error', 'message': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
 
     def delete(self, request):
         """delete menu item"""
