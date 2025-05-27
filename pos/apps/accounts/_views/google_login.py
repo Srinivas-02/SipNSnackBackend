@@ -39,14 +39,18 @@ class GoogleLoginView(APIView):
             first_name = idinfo.get('given_name', '')
             last_name = idinfo.get('family_name', '')
 
-            # Auto-assign roles based on email domain
             domain = email.split('@')[-1].lower()
+
+            if domain != 'sn15.ai':
+                return Response({
+                    'error': "Your account is not authorized to sign in ."
+                }, status=status.HTTP_403_FORBIDDEN)
+            
             defaults = {
                 'first_name': first_name,
                 'last_name': last_name,
+                'is_franchise_admin': True,
             }
-            if domain == 'ajairobotics.com':
-                defaults['is_franchise_admin'] = True
 
             # Get or create the user (preserves existing flags)
             user, created = User.objects.get_or_create(
