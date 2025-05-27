@@ -15,3 +15,5 @@ A Django REST API backend for restaurant point-of-sale management.
    ```bash
    git clone https://github.com/imvijay0/point_of_sale_project.git
    cd pos-backend
+
+   sudo docker-compose exec web python3 manage.py createsuperuser
