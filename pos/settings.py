@@ -20,6 +20,7 @@ load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+THIS_DIR = Path(__file__).resolve().parent
 
 
 # Quick-start development settings - unsuitable for production
@@ -33,10 +34,15 @@ if not SECRET_KEY:
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "*"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "*","http://localhost:5173",
+    "http://127.0.0.1:5173"]
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+CORS_ORIGIN_WHITELIST = [
+    'http://localhost:5173',
+]
 
 
 # Application definition
@@ -112,7 +118,9 @@ ROOT_URLCONF = 'pos.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [
+                THIS_DIR/ "templates",
+             ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -169,7 +177,25 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+
+#EMAIL 
+
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_HOST_USER = "imvijay2233@gmail.com"
+EMAIL_HOST_PASSWORD = "djuq pwad ojav ggei"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_TEMPLATES_DIR = THIS_DIR/ "templates"
+
+
+
+
+
 AUTH_USER_MODEL = 'accounts.User'
+
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
 
 
 # Internationalization
