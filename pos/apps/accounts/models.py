@@ -1,7 +1,5 @@
-# accounts/models.py
 from django.db import models
 from django.utils import timezone
-
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from pos.apps.locations.models import LocationModel as Location
 
@@ -50,6 +48,13 @@ class User(AbstractBaseUser):
     is_staff_member = models.BooleanField('staff member status', default=False)
     
     locations = models.ManyToManyField(Location, blank=True)
+    created_by = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='created_users'
+    )
     
     is_logged_in = models.BooleanField(default=False)
     
@@ -73,7 +78,6 @@ class User(AbstractBaseUser):
             raise ValueError("User can only have one role at a time")
         
         super().save(*args, **kwargs)
-
 
 class BlacklistedToken(models.Model):
     jti = models.CharField(max_length=255, unique=True)
