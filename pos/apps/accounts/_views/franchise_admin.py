@@ -21,8 +21,7 @@ class FranchiseAdminView(APIView):
     
     def post(self, request):
         """Create new franchise admin"""
-        logger.info(f"hello mawa from the postmethod \n\n\n\n\n\n\n")
-        required_fields = ['email', 'password', 'first_name', 'last_name', 'location_ids']
+        required_fields = ['email', 'first_name', 'last_name', 'location_ids']
         if missing := [f for f in required_fields if f not in request.data]:
             logger.warning(f"Attempt to create franchise admin with missing fields: {missing}")
             return Response(
@@ -34,11 +33,14 @@ class FranchiseAdminView(APIView):
             try:
                 franchise_admin = User.objects.create_user(
                     email=request.data['email'],
-                    password=request.data['password'],
                     first_name=request.data['first_name'],
                     last_name=request.data['last_name'],
                     is_franchise_admin=True
                 )
+
+                # Ensure no password login is possible
+                franchise_admin.set_unusable_password()
+                franchise_admin.save()
 
                 if 'location_ids' in request.data:
                     locations = LocationModel.objects.filter(id__in=request.data['location_ids'])
@@ -73,11 +75,14 @@ class FranchiseAdminView(APIView):
             try:
                 franchise_admin = User.objects.create_user(
                     email=request.data['email'],
-                    password=request.data['password'],
                     first_name=request.data['first_name'],
                     last_name=request.data['last_name'],
                     is_franchise_admin=True
                 )
+
+                # Ensure no password login is possible
+                franchise_admin.set_unusable_password()
+                franchise_admin.save()
 
                 locations = LocationModel.objects.filter(id__in=requested_locations)
                 franchise_admin.locations.set(locations)
@@ -100,7 +105,6 @@ class FranchiseAdminView(APIView):
 
     def get(self, request):
         """Get all franchise admins or specific one"""
-        logger.info(f"[FranchiseAdminView] GET request received by meeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
         
         admin_id = request.query_params.get('id')
         if admin_id:
