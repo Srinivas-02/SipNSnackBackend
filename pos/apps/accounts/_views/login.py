@@ -46,18 +46,18 @@ class UserLoginView(APIView):
 
     
     
-    # def get_tokens_for_user(self, user):
-    #     refresh = RefreshToken.for_user(user)
-    #     return {
-    #         'refresh': str(refresh),
-    #         'access': str(refresh.access_token),
-    #     }
+    def get_tokens_for_user(self, user):
+        refresh = RefreshToken.for_user(user)
+        return {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
     
     def post(self, request):
 
-        return Response({
-            "error" : "Normal login is disabled - use Google Sign-In"
-        }, status=status.HTTP_403_FORBIDDEN)
+        # return Response({
+        #     "error" : "Normal login is disabled - use Google Sign-In"
+        # }, status=status.HTTP_403_FORBIDDEN)
 
         email = request.data.get('email')
         password = request.data.get('password')

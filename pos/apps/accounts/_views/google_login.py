@@ -6,6 +6,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from pos.utils.logger import POSLogger
 
 User = get_user_model()
 
@@ -14,7 +15,11 @@ class GoogleLoginView(APIView):
     POST endpoint to handle Google Sign-In.
     Expects a JSON body with a 'token' field containing the Google ID token.
     """
+    
     def post(self, request):
+        logger = POSLogger(__name__)
+
+
         token = request.data.get('token')
         if not token:
             return Response({'error': 'No token provided.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -36,8 +41,6 @@ class GoogleLoginView(APIView):
                 return Response({'error': 'Google account email not verified.'}, status=status.HTTP_400_BAD_REQUEST)
 
             email = idinfo['email']
-            first_name = idinfo.get('given_name', '')
-            last_name = idinfo.get('family_name', '')
 
             domain = email.split('@')[-1].lower()
 
@@ -46,18 +49,18 @@ class GoogleLoginView(APIView):
                     'error': "Your account is not authorized to sign in ."
                 }, status=status.HTTP_403_FORBIDDEN)
             
-            defaults = {
-                'first_name': first_name,
-                'last_name': last_name,
-                'is_franchise_admin': True,
-            }
 
-            # Get or create the user (preserves existing flags)
-            user, created = User.objects.get_or_create(
-                email=email,
-                defaults=defaults
-            )
+           # check if  user exists in db
 
+            try:
+                user = User.objects.get(email=email,is_franchise_admin=True)
+                logger.info(f"\n\n User email from db is : {user.email}\n\n")
+            except User.DoesNotExist:
+                return Response(
+                    {"error" : "Sorry You are not registered to use this application."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
             # Issue our own JWT tokens
             refresh = RefreshToken.for_user(user)
             access_token = str(refresh.access_token)
