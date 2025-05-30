@@ -90,7 +90,6 @@ class FranchiseAdminView(APIView):
 
     def get(self, request):
         """Get all franchise admins or specific one"""
-        logger.info(f"[FranchiseAdminView] GET request received by meeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
         
         admin_id = request.query_params.get('id')
         if admin_id:
