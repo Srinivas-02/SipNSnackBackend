@@ -53,7 +53,7 @@ class GoogleLoginView(APIView):
            # check if  user exists in db
 
             try:
-                user = User.objects.get(email=email,is_franchise_admin=True)
+                user = User.objects.get(email=email)
                 logger.info(f"\n\n User email from db is : {user.email}\n\n")
             except User.DoesNotExist:
                 return Response(

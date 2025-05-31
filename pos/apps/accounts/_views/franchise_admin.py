@@ -1,3 +1,4 @@
+import os
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -5,6 +6,10 @@ from rest_framework import status
 from pos.apps.accounts.models import User
 from pos.apps.locations.models import LocationModel
 from pos.utils.logger import POSLogger
+from django.core.mail import send_mail
+
+from django.conf import settings
+from django.template.loader import render_to_string
 
 logger = POSLogger(__name__)
 
@@ -46,6 +51,10 @@ class FranchiseAdminView(APIView):
                 # Ensure no password login is possible
                 franchise_admin.set_unusable_password()
                 franchise_admin.save()
+                
+                # welcome mail
+                send_welcome_mail(franchise_admin)
+
                 if 'location_ids' in request.data:
                     locations = LocationModel.objects.filter(id__in=request.data['location_ids'])
                     franchise_admin.locations.set(locations)
@@ -95,6 +104,8 @@ class FranchiseAdminView(APIView):
             # Ensure no password login is possible
             franchise_admin.set_unusable_password()
             franchise_admin.save()
+
+            send_welcome_mail(admin)
 
             locations = LocationModel.objects.filter(id__in=requested_locations)
             franchise_admin.locations.set(locations)
@@ -250,4 +261,36 @@ class FranchiseAdminView(APIView):
         except Exception as e:
             logger.error(f"Error deleting franchise admin: {str(e)}")
             return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
+        
 
+def send_welcome_mail(user):
+
+    subject = "Welcome to Sip n Snack"
+    from_email = settings.EMAIL_HOST_USER
+    to_list = [user.email]
+    text_body = (
+        f"Dear {user.first_name},\n\n"
+        "Welcome to Sip n Snack! Your franchise admin account has been created.\n"
+        "You can log in to your account at: http://localhost:5173/\n\n"
+        "Warm regards,\n"
+        "The Sip n Snack Team\n"
+    )
+    html_body = render_to_string(
+        'welcome_message.html',  # _just_ the filename, not a full path
+        {
+            'first_name': user.first_name,
+            'login_url': "http://localhost:5173/"
+        }
+    )
+
+    logger.info(f"Welcome mail being sent to {user.email}")
+
+    # 3) Send a multipart email (plain‐text + HTML)
+    send_mail(
+        subject=subject,
+        message=text_body,           
+        from_email=from_email,
+        recipient_list=to_list,
+        fail_silently=False,
+        html_message=html_body       
+    )
